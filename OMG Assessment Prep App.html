@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>OMG Prep Tracker — SkyWater Search</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2744; --blue: #2a5caa; --blue-light: #3a7bd5; --gold: #e8a020;
+    --green: #2ecc8a; --red: #e05555; --yellow: #f0c040; --bg: #111827;
+    --card: #1e2d45; --card2: #162035; --text: #e8edf5; --muted: #7a90b0;
+    --border: #2a3f62; --tag-green-bg: #0d2e20; --tag-yellow-bg: #2e2200; --tag-red-bg: #2e1010;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; }
+  .header { background: var(--navy); border-bottom: 2px solid var(--blue); padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .progress-bar-outer { background: var(--border); border-radius: 4px; height: 6px; width: 200px; overflow: hidden; }
+  .progress-bar-inner { background: linear-gradient(90deg, var(--blue), var(--gold)); height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .progress-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; text-align: right; }
+  .main { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 70px); }
+  .question-panel { padding: 28px; overflow-y: auto; border-right: 1px solid var(--border); }
+  .sidebar { background: var(--card2); padding: 22px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 22px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .q-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .q-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; background: var(--blue); color: white; padding: 3px 9px; border-radius: 4px; }
+  .q-dimension { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; }
+  .q-text { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; line-height: 1.5; margin-bottom: 18px; }
+  .q-probe { font-size: 11px; color: var(--muted); margin-bottom: 18px; line-height: 1.6; border-left: 2px solid var(--border); padding-left: 10px; }
+  .response-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .response-btn { padding: 11px 16px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; text-align: left; transition: all 0.15s; line-height: 1.4; }
+  .response-btn:hover { border-color: var(--blue-light); background: rgba(42,92,170,0.15); }
+  .response-btn.selected-green { border-color: var(--green); background: var(--tag-green-bg); color: var(--green); }
+  .response-btn.selected-yellow { border-color: var(--yellow); background: var(--tag-yellow-bg); color: var(--yellow); }
+  .response-btn.selected-red { border-color: var(--red); background: var(--tag-red-bg); color: var(--red); }
+  .signal-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .signal-green { background: var(--tag-green-bg); color: var(--green); }
+  .signal-yellow { background: var(--tag-yellow-bg); color: var(--yellow); }
+  .signal-red { background: var(--tag-red-bg); color: var(--red); }
+  .followup-box { background: rgba(42,92,170,0.08); border: 1px solid rgba(42,92,170,0.3); border-radius: 7px; padding: 12px 14px; font-size: 11px; color: var(--blue-light); line-height: 1.6; margin-top: 10px; }
+  .followup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px; }
+  .notes-input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; resize: none; height: 72px; margin-top: 4px; transition: border-color 0.15s; }
+  .notes-input:focus { outline: none; border-color: var(--blue); }
+  .notes-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 14px; display: block; }
+  .nav-row { display: flex; gap: 10px; margin-top: 12px; }
+  .nav-btn { padding: 9px 20px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+  .nav-btn:hover { border-color: var(--blue); color: var(--text); }
+  .nav-btn.primary { background: var(--blue); border-color: var(--blue); color: white; }
+  .nav-btn.primary:hover { background: var(--blue-light); }
+  .sidebar-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .sidebar-label { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+  .score-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .score-row:last-child { border-bottom: none; }
+  .score-dim { color: var(--muted); }
+  .score-val { font-weight: 500; font-size: 10px; padding: 2px 7px; border-radius: 3px; }
+  .nav-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .nav-dot { width: 28px; height: 28px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+  .nav-dot:hover { border-color: var(--blue); color: var(--text); }
+  .nav-dot.active { border-color: var(--blue); background: var(--blue); color: white; }
+  .nav-dot.done-green { border-color: var(--green); background: var(--tag-green-bg); color: var(--green); }
+  .nav-dot.done-yellow { border-color: var(--yellow); background: var(--tag-yellow-bg); color: var(--yellow); }
+  .nav-dot.done-red { border-color: var(--red); background: var(--tag-red-bg); color: var(--red); }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+  .summary-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .summary-sub { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-q { font-size: 11px; color: var(--text); flex: 1; line-height: 1.4; }
+  .summary-dim { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .summary-note { font-size: 10px; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .action-btn { padding: 11px 22px; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; width: 100%; margin-top: 10px; transition: background 0.15s; }
+  .action-btn.primary { border: none; background: var(--blue); color: white; }
+  .action-btn.primary:hover { background: var(--blue-light); }
+  .action-btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .overall-score { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; text-align: center; margin: 10px 0 4px; }
+  .overall-label { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+  .overall-verdict { text-align: center; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 6px; margin-bottom: 16px; display: block; }
+  .hidden { display: none; }
+  #summaryView { padding: 28px; overflow-y: auto; max-height: calc(100vh - 70px); }
+  .name-screen { display: flex; align-items: center; justify-content: center; height: calc(100vh - 70px); }
+  .name-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 40px; max-width: 420px; width: 100%; }
+  .name-card h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .name-card p { font-size: 12px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .name-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; margin-bottom: 16px; }
+  .name-input:focus { outline: none; border-color: var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">OMG Prep Tracker</div>
+    <div class="header-sub">SkyWater Search — Candidate Assessment Prep</div>
+  </div>
+  <div>
+    <div class="progress-label" id="progressLabel">Question 1 of 8</div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="progressBar" style="width:12.5%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Name Screen -->
+<div id="nameScreen" class="name-screen">
+  <div class="name-card">
+    <h2>Start Prep Session</h2>
+    <p>Enter the candidate's name to begin. You'll score their responses across 8 OMG-mapped dimensions and get a summary you can paste directly into Claude.</p>
+    <input class="name-input" id="nameInput" type="text" placeholder="Candidate full name..." />
+    <button class="action-btn primary" onclick="startSession()">Start Session</button>
+  </div>
+</div>
+
+<!-- Main View -->
+<div id="mainView" class="main hidden">
+  <div class="question-panel" id="questionPanel"></div>
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Question Map</div>
+      <div class="nav-dots" id="navDots"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Live Scorecard</div>
+      <div id="scorecardRows"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Red Flags</div>
+      <div id="flagSummary" style="font-size:11px; color: var(--muted);">No responses yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary View -->
+<div id="summaryView" class="hidden">
+  <div class="summary-card">
+    <div class="summary-title">Prep Session Summary</div>
+    <div class="summary-sub" id="summaryMeta"></div>
+    <div id="overallScoreBlock"></div>
+    <div id="summaryRows"></div>
+  </div>
+  <button class="action-btn primary" onclick="copyForClaude()">Copy Summary for Claude</button>
+  <button class="action-btn secondary" onclick="resetAll()">Start New Session</button>
+</div>
+
+<script>
+const questions = [
+  {
+    id: 1, dimension: "Buy Cycle", omgTarget: "70+ (Stephen scored 29)",
+    text: "Walk me through how you personally make a major purchase — like a car or something over $10,000. What does that process look like for you?",
+    probe: "Listen for: research behavior, comparison shopping, time to decide, price sensitivity. This is the #1 OMG kill shot.",
+    responses: [
+      { label: "Decides quickly based on value/fit. Minimal research. Doesn't price-shop or comparison shop.", signal: "green", flag: "Strong Buy Cycle" },
+      { label: "Does some research but moves relatively quickly. Not a heavy comparison shopper.", signal: "yellow", flag: "Moderate Buy Cycle — coach on framing" },
+      { label: "Researches extensively, shops around, takes time to decide, price-sensitive.", signal: "red", flag: "Weak Buy Cycle — major OMG risk" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'When you find two options at different prices, what usually breaks the tie for you?' Looking for value-first language, not price justification.",
+      red: "Flag: Their personal buy behavior directly predicts how they handle prospect put-offs. If they think it over themselves, they accept it from prospects. Coach them to internalize the connection."
+    }
+  },
+  {
+    id: 2, dimension: "Hunting", omgTarget: "67+",
+    text: "When your pipeline is thin, what do you actually do? Walk me through your last 2-3 prospecting activities.",
+    probe: "Listen for: specific proactive actions vs. working existing relationships or waiting on inbound.",
+    responses: [
+      { label: "Names specific proactive actions — cold outreach, targeted lists, referral asks, cold walk-ins.", signal: "green", flag: "Strong Hunter" },
+      { label: "Mix of reactive and proactive — some hunting but defaults to existing relationships first.", signal: "yellow", flag: "Moderate Hunter — probe further" },
+      { label: "Waits on leads, leans on inbound, describes relationship maintenance as 'prospecting.'", signal: "red", flag: "Farmer tendency — OMG Hunting risk" }
+    ],
+    followup: {
+      green: "Follow up: 'How often do you do this when the pipeline is healthy, not just when it's thin?' Consistency is what OMG measures, not crisis behavior.",
+      yellow: "Ask: 'Give me a specific example of going after a brand new account cold — not a referral, not an inbound.' Validate or expose.",
+      red: null
+    }
+  },
+  {
+    id: 3, dimension: "Doesn't Need Approval", omgTarget: "86+",
+    text: "Tell me about a time you pushed back hard on a prospect — challenged something they believed that you thought was wrong. What happened?",
+    probe: "Listen for: comfort with tension, whether they softened or held ground, outcome vs. relationship focus.",
+    responses: [
+      { label: "Clear example. Held their ground. Comfortable with discomfort. Outcome-focused over being liked.", signal: "green", flag: "Approval-independent" },
+      { label: "Has an example but softened it heavily — 'I was diplomatic' or 'I framed it carefully.'", signal: "yellow", flag: "Mild approval need — watch at close" },
+      { label: "Struggles to name a real example. Defaults to 'I try to see their perspective.' Avoids framing it as pushback.", signal: "red", flag: "High approval need — OMG risk" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'If you knew pushing back would make them like you less but win the deal, would you do it?' Listen for hesitation.",
+      red: null
+    }
+  },
+  {
+    id: 4, dimension: "Motivation / Desire", omgTarget: "67+",
+    text: "What are your personal financial or life goals for the next 3 years? Are they written down anywhere?",
+    probe: "Listen for: specificity, written goals with dates, a real plan, self-imposed pressure vs. external motivation.",
+    responses: [
+      { label: "Specific written goals with timelines. Tracks progress. Self-driven. Has a system.", signal: "green", flag: "Strong intrinsic motivation" },
+      { label: "Has goals but vague — 'make more money,' 'be comfortable.' Not written. Not tracked.", signal: "yellow", flag: "Moderate motivation — coach on specificity" },
+      { label: "Can't articulate goals. Looks to manager or company for direction. No personal system.", signal: "red", flag: "Low intrinsic motivation — OMG risk" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'What's a specific number you want to hit in the next 12 months and what's your plan to get there?' If they can answer this well, upgrade.",
+      red: null
+    }
+  },
+  {
+    id: 5, dimension: "Value Selling", omgTarget: "67+",
+    text: "A prospect says your solution is $200K more than the competitor. How do you handle that conversation?",
+    probe: "Listen for: whether they defend value, fold, or pivot to discounting. Also cross-checks Buy Cycle.",
+    responses: [
+      { label: "Holds on value. Redirects to ROI, uptime, risk. Doesn't flinch. Willing to walk away.", signal: "green", flag: "Strong value seller" },
+      { label: "Tries to justify price but leans toward 'we can work with you on pricing' quickly.", signal: "yellow", flag: "Moderate — tendency to negotiate down" },
+      { label: "Immediately offers discounts or options. Over-explains cost. Agrees the competitor is close enough.", signal: "red", flag: "Price-seller tendency — OMG risk" }
+    ],
+    followup: {
+      green: "Ask: 'Have you ever walked away from a deal because they wanted a price you wouldn't give?' Strong candidates have done this.",
+      yellow: "Ask: 'At what point would you hold firm vs. negotiate? What's your actual line?' Listen for clarity or vagueness.",
+      red: null
+    }
+  },
+  {
+    id: 6, dimension: "Reaching Decision-Makers", omgTarget: "67+",
+    text: "Your contact is a plant engineer who loves you but the VP of Ops is the real decision-maker and won't take meetings. What do you do?",
+    probe: "Listen for: specific escalation strategy vs. staying comfortable with the lower contact.",
+    responses: [
+      { label: "Has a specific strategy — coach the contact, create internal urgency, find another path above, or go around directly.", signal: "green", flag: "Reaches DMs effectively" },
+      { label: "Tries to work through the contact but has no clear strategy. Hopes it works out.", signal: "yellow", flag: "Moderate — needs coaching on DM access" },
+      { label: "Accepts the situation. Keeps calling on the engineer. Waits for the door to open.", signal: "red", flag: "Gets stuck below DMs — OMG risk" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'Have you ever gone around a contact to reach someone higher? What happened?' Validate with a real example.",
+      red: null
+    }
+  },
+  {
+    id: 7, dimension: "Closing / Buy Cycle", omgTarget: "67+",
+    text: "A prospect says 'this looks great, we just need a few more weeks to think it over.' What do you say — word for word?",
+    probe: "Listen for: whether they accept the put-off gracefully or push back. Buy Cycle showing up in real selling behavior.",
+    responses: [
+      { label: "Pushes back directly. 'Help me understand what specifically needs more time.' Gets a commitment, not a follow-up.", signal: "green", flag: "Strong on put-offs" },
+      { label: "Asks a follow-up question but ultimately schedules the call without getting a real commitment.", signal: "yellow", flag: "Moderate — partially lets them off the hook" },
+      { label: "'Of course, totally understand' and schedules a call in 3 weeks.", signal: "red", flag: "Accepts think-it-overs — direct Buy Cycle signal" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'What would you do if they gave you the same answer on the follow-up call?' See if they have an escalation move or just repeat.",
+      red: "This is Buy Cycle in action. If they accept think-it-overs from prospects, it's because they do it themselves. Connect the two explicitly in coaching."
+    }
+  },
+  {
+    id: 8, dimension: "Working Remotely", omgTarget: "80+",
+    text: "Describe your current or most recent remote setup — how do you structure your day, manage your pipeline, and stay accountable without a manager watching?",
+    probe: "Listen for: self-imposed structure, CRM discipline, a real routine. Absence of specifics is the flag.",
+    responses: [
+      { label: "Clear routine. Uses CRM consistently. Self-accountable. Doesn't need check-ins to stay on track.", signal: "green", flag: "Remote-ready" },
+      { label: "Works remotely but structure is loose. 'I just make it work.' CRM usage unclear.", signal: "yellow", flag: "Moderate remote fit — probe further" },
+      { label: "Prefers office. Struggles to describe a self-management system. Relies on manager cadence.", signal: "red", flag: "Remote risk — OMG will flag this" }
+    ],
+    followup: {
+      green: null,
+      yellow: "Ask: 'Walk me through what your Tuesday looked like last week — hour by hour if you can.' Structure either exists or it doesn't.",
+      red: null
+    }
+  }
+];
+
+const state = {
+  current: 0,
+  responses: Array(questions.length).fill(null),
+  notes: Array(questions.length).fill(''),
+  candidateName: ''
+};
+
+function startSession() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { alert('Please enter a candidate name.'); return; }
+  state.candidateName = name;
+  document.getElementById('nameScreen').classList.add('hidden');
+  document.getElementById('mainView').classList.remove('hidden');
+  renderQuestion();
+  renderNavDots();
+  renderScorecard();
+}
+
+function renderQuestion() {
+  const q = questions[state.current];
+  const saved = state.responses[state.current];
+  const savedNote = state.notes[state.current];
+
+  const followupHtml = saved && q.followup[saved.signal] ? `
+    <div class="followup-box">
+      <div class="followup-label">Follow-up probe</div>
+      ${q.followup[saved.signal]}
+    </div>` : '';
+
+  const responseHtml = q.responses.map((r, i) => {
+    let cls = '';
+    if (saved && saved.label === r.label) cls = `selected-${r.signal}`;
+    return `<button class="response-btn ${cls}" onclick="selectResponse(${i})">${r.label}</button>`;
+  }).join('');
+
+  const isLast = state.current === questions.length - 1;
+  const isFirst = state.current === 0;
+
+  document.getElementById('questionPanel').innerHTML = `
+    <div class="q-card">
+      <div class="q-meta">
+        <span class="q-num">Q${q.id}</span>
+        <span class="q-dimension">${q.dimension}</span>
+        <span style="font-size:10px; color: var(--muted);">OMG target: ${q.omgTarget}</span>
+        ${saved ? `<span class="signal-badge signal-${saved.signal}">${saved.flag}</span>` : ''}
+      </div>
+      <div class="q-text">${q.text}</div>
+      <div class="q-probe">${q.probe}</div>
+      <div class="response-group">${responseHtml}</div>
+      ${followupHtml}
+      <span class="notes-label">Your notes on this response</span>
+      <textarea class="notes-input" id="notesInput" placeholder="What did they say? Any tells? Specific quotes...">${savedNote}</textarea>
+      <div class="nav-row">
+        ${!isFirst ? `<button class="nav-btn" onclick="navigate(-1)">Back</button>` : '<div></div>'}
+        ${!isLast ? `<button class="nav-btn primary" onclick="navigate(1)">Next</button>` : `<button class="nav-btn primary" onclick="showSummary()">View Summary</button>`}
+      </div>
+    </div>`;
+
+  const pct = ((state.current + 1) / questions.length) * 100;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `Question ${state.current + 1} of ${questions.length}`;
+}
+
+function selectResponse(idx) {
+  saveNotes();
+  state.responses[state.current] = questions[state.current].responses[idx];
+  renderQuestion();
+  renderNavDots();
+  renderScorecard();
+}
+
+function saveNotes() {
+  const el = document.getElementById('notesInput');
+  if (el) state.notes[state.current] = el.value;
+}
+
+function navigate(dir) {
+  saveNotes();
+  state.current = Math.max(0, Math.min(questions.length - 1, state.current + dir));
+  renderQuestion();
+  renderNavDots();
+}
+
+function renderNavDots() {
+  document.getElementById('navDots').innerHTML = questions.map((q, i) => {
+    const r = state.responses[i];
+    let cls = i === state.current ? 'nav-dot active' : 'nav-dot';
+    if (r && i !== state.current) cls = `nav-dot done-${r.signal}`;
+    return `<button class="${cls}" onclick="jumpTo(${i})">${i + 1}</button>`;
+  }).join('');
+}
+
+function jumpTo(i) {
+  saveNotes();
+  state.current = i;
+  renderQuestion();
+  renderNavDots();
+}
+
+function renderScorecard() {
+  const dims = {};
+  questions.forEach((q, i) => {
+    if (!dims[q.dimension]) dims[q.dimension] = [];
+    dims[q.dimension].push(state.responses[i] ? state.responses[i].signal : null);
+  });
+
+  document.getElementById('scorecardRows').innerHTML = Object.entries(dims).map(([dim, signals]) => {
+    const answered = signals.filter(Boolean);
+    if (!answered.length) return `<div class="score-row"><span class="score-dim">${dim}</span><span class="score-val" style="background:var(--border);color:var(--muted)">—</span></div>`;
+    const agg = answered.includes('red') ? 'red' : answered.includes('yellow') ? 'yellow' : 'green';
+    const label = { green: 'STRONG', yellow: 'WATCH', red: 'FLAG' }[agg];
+    return `<div class="score-row"><span class="score-dim">${dim}</span><span class="score-val signal-${agg}">${label}</span></div>`;
+  }).join('');
+
+  const flags = state.responses.map((r, i) => r && r.signal === 'red' ? { q: i + 1, flag: r.flag } : null).filter(Boolean);
+  document.getElementById('flagSummary').innerHTML = flags.length
+    ? flags.map(f => `<div style="margin-bottom:8px"><span class="signal-badge signal-red">Q${f.q}</span> <span style="font-size:10px;color:var(--text)">${f.flag}</span></div>`).join('')
+    : '<span style="color:var(--muted)">No red flags yet.</span>';
+}
+
+function showSummary() {
+  saveNotes();
+  const greens = state.responses.filter(r => r && r.signal === 'green').length;
+  const yellows = state.responses.filter(r => r && r.signal === 'yellow').length;
+  const reds = state.responses.filter(r => r && r.signal === 'red').length;
+  const answered = greens + yellows + reds;
+
+  let overallSignal = 'green';
+  let verdict = 'Strong prep profile — likely to score well on OMG';
+  if (reds >= 3) { overallSignal = 'red'; verdict = 'Multiple OMG risk areas — needs significant coaching before assessment'; }
+  else if (reds >= 1 || yellows >= 3) { overallSignal = 'yellow'; verdict = 'Watchlist — a few areas to address before the assessment'; }
+
+  const scoreColor = { green: 'var(--green)', yellow: 'var(--yellow)', red: 'var(--red)' }[overallSignal];
+  const scorePct = answered > 0 ? Math.round((greens / answered) * 100) : 0;
+
+  document.getElementById('summaryMeta').textContent = `${state.candidateName} · ${new Date().toLocaleDateString()} · ${answered} of ${questions.length} questions answered`;
+  document.getElementById('overallScoreBlock').innerHTML = `
+    <div class="overall-score" style="color:${scoreColor}">${scorePct}%</div>
+    <div class="overall-label">${greens} strong / ${yellows} watch / ${reds} flag out of ${answered} answered</div>
+    <div class="overall-verdict signal-${overallSignal}">${verdict}</div>`;
+
+  document.getElementById('summaryRows').innerHTML = questions.map((q, i) => {
+    const r = state.responses[i];
+    const note = state.notes[i];
+    const badge = r ? `<span class="signal-badge signal-${r.signal}">${r.flag}</span>` : `<span class="signal-badge" style="background:var(--border);color:var(--muted)">NOT ANSWERED</span>`;
+    return `<div class="summary-row">
+      <div style="flex:1">
+        <div class="summary-q"><strong>Q${i + 1} — ${q.dimension}</strong></div>
+        <div class="summary-dim">${q.text.substring(0, 90)}...</div>
+        ${r ? `<div class="summary-dim" style="margin-top:3px;color:var(--text)">${r.label}</div>` : ''}
+        ${note ? `<div class="summary-note">"${note}"</div>` : ''}
+      </div>
+      <div style="text-align:right;white-space:nowrap;padding-top:2px">${badge}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('summaryView').classList.remove('hidden');
+}
+
+function copyForClaude() {
+  const greens = state.responses.filter(r => r && r.signal === 'green').length;
+  const yellows = state.responses.filter(r => r && r.signal === 'yellow').length;
+  const reds = state.responses.filter(r => r && r.signal === 'red').length;
+
+  let text = `OMG PREP SESSION — ${state.candidateName} — ${new Date().toLocaleDateString()}\n`;
+  text += `OVERALL: ${greens} strong / ${yellows} watch / ${reds} flag\n\n`;
+  questions.forEach((q, i) => {
+    const r = state.responses[i];
+    const note = state.notes[i];
+    text += `Q${i + 1} — ${q.dimension} [OMG target: ${q.omgTarget}]\n`;
+    text += `Signal: ${r ? r.signal.toUpperCase() + ' — ' + r.flag : 'NOT ANSWERED'}\n`;
+    if (r) text += `Response: ${r.label}\n`;
+    if (note) text += `Notes: ${note}\n`;
+    text += '\n';
+  });
+
+  navigator.clipboard.writeText(text).then(() => alert('Copied! Paste into Claude for analysis and coaching recommendations.'));
+}
+
+function resetAll() {
+  state.current = 0;
+  state.responses = Array(questions.length).fill(null);
+  state.notes = Array(questions.length).fill('');
+  state.candidateName = '';
+  document.getElementById('summaryView').classList.add('hidden');
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('nameScreen').classList.remove('hidden');
+  document.getElementById('nameInput').value = '';
+}
+</script>
+</body>
+</html>
